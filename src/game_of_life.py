@@ -13,7 +13,8 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 def get_random_color():
-    return (random.randint(100, 255), random.randint(0, 255), random.randint(60, 190))
+    return (100, 100, 100)
+    return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
 @nb.njit
 def init_matrix(fill_random :bool, rows, cols):
@@ -34,16 +35,16 @@ def draw_matrix(game_matrix, screen: pygame.Surface) -> None:
                     ((row * col) % 255, 
                     (col * op.V_RES) % 255, 
                     (row * op.H_RES) % 255), 
-                    [col * op.RESOLUTION, 
-                     row * op.RESOLUTION, 
+                    [col * op.RESOLUTION - op.CELL_SIZE//2, 
+                     row * op.RESOLUTION - op.CELL_SIZE//2, 
                      op.CELL_SIZE, 
                      op.CELL_SIZE])
 
                 # pygame.draw.circle(screen, 
-                #      get_random_color(),
-                #      [col * op.RESOLUTION, 
-                #       row * op.RESOLUTION],
-                #       op.CELL_SIZE)
+                #     (100, 150, 100),
+                #     [col * op.RESOLUTION, 
+                #     row * op.RESOLUTION],
+                #     op.CELL_SIZE//2)
                 
                 for i in nb.prange(-1, 2):
                     for j in nb.prange(-1, 2):
@@ -58,7 +59,7 @@ def draw_matrix(game_matrix, screen: pygame.Surface) -> None:
                         pygame.draw.line(screen, 
                              get_random_color(), 
                              [col * op.RESOLUTION, row * op.RESOLUTION], 
-                             [col_index * op.RESOLUTION, row_index * op.RESOLUTION], 2)
+                             [col_index * op.RESOLUTION, row_index * op.RESOLUTION], op.RESOLUTION//5)
 
 @nb.jit(fastmath=True, parallel=True)
 def count_cell_neighbors(game_matrix, row :int, col:int) -> int:
@@ -99,7 +100,8 @@ def get_next_generation(game_matrix, rows, cols):
 def set_game_matrix_cell_by_coords(x, y, game_matrix):
     if x < op.WIDTH and x >= 0 and y < op.HEIGHT and y >= 0: 
         j, i = x // op.RESOLUTION, y // op.RESOLUTION
-        game_matrix[i][j] = 1 if game_matrix[i][j] == 0 else 0
+        print(i, j)
+        game_matrix[i][j] = 1 
 
 @nb.njit(fastmath=True)
 def get_euclidean_distance(x1, y1, x2, y2):
@@ -113,7 +115,7 @@ def main() -> None:
     pygame.display.set_caption("Game of life")
     screen = pygame.display.set_mode((op.WIDTH, op.HEIGHT))
 
-    game_matrix = init_matrix(True, op.V_RES, op.H_RES)
+    game_matrix = init_matrix(False, op.V_RES, op.H_RES)
 
     running = True
     pause = False
@@ -144,22 +146,21 @@ def main() -> None:
                 case pygame.MOUSEMOTION:
                     if lbm_pressed:
                         x, y = pygame.mouse.get_pos()
-                        #print(f"x: {x} y: {y}")
-                        #print(f"prev_x: {prev_x} prev_y: {prev_y}")
+
+                        angle = math.pi + math.atan2(prev_y - y, prev_x - x)
+                        angle_sin = math.sin(angle)
+                        angle_cos = math.cos(angle)
 
                         distance = get_euclidean_distance(x, y, prev_x, prev_y)
-                        for _ in range(0, distance // op.CELL_SIZE + 1):
-                            set_game_matrix_cell_by_coords(prev_x, prev_y, game_matrix)
-                            prev_x, prev_y = prev_x + op.CELL_SIZE, prev_y + op.CELL_SIZE
-                            #print(f"x: {x} y: {y}")
+                        prev_x_l, prev_y_l = prev_x, prev_y
+                        for _ in range(0, distance // op.CELL_SIZE):
+                            set_game_matrix_cell_by_coords(int(prev_x_l), int(prev_y_l), game_matrix)
+                            prev_x_l, prev_y_l = prev_x_l + angle_cos * op.CELL_SIZE, prev_y_l + angle_sin * op.CELL_SIZE
 
                         prev_x, prev_y = x, y
 
-        
-        #updater.update(events=events, mouse_rel=pygame.mouse.get_rel())
-        #op.RESOLUTION = elems[0].get_value()
-        op.H_RES = op.WIDTH // op.RESOLUTION # Horizontal resolution
-        op.V_RES = op.HEIGHT // op.RESOLUTION # Vertical resolution
+        # op.H_RES = op.WIDTH // op.RESOLUTION # Horizontal resolution
+        # op.V_RES = op.HEIGHT // op.RESOLUTION # Vertical resolution
 
         draw_matrix(game_matrix, screen)
         pygame.display.update()
