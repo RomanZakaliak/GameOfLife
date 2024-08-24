@@ -4,6 +4,8 @@ import numpy as np
 import numba as nb
 import math
 
+from cell_shape import *
+
 import traceback
 
 import options as op
@@ -13,7 +15,6 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 def get_random_color():
-    return (100, 100, 100)
     return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
 @nb.njit
@@ -24,28 +25,18 @@ def init_matrix(fill_random :bool, rows, cols):
     return np.zeros((rows, cols), dtype=nb.int64)
 
 @nb.jit(forceobj=True, looplift=False, parallel=True)
-def draw_matrix(game_matrix, screen: pygame.Surface) -> None:
+def draw_matrix(game_matrix, shape: CellShape, line_shape: LineShape) -> None:
     for row in nb.prange(op.V_RES):
         for col in nb.prange(op.H_RES):
             if row >= len(game_matrix) or col >= len(game_matrix[0]):
                 continue
-
             if game_matrix[row][col] == 1:
-                pygame.draw.rect(screen, 
-                    ((row * col) % 255, 
-                    (col * op.V_RES) % 255, 
-                    (row * op.H_RES) % 255), 
-                    [col * op.RESOLUTION - op.CELL_SIZE//2, 
-                     row * op.RESOLUTION - op.CELL_SIZE//2, 
-                     op.CELL_SIZE, 
-                     op.CELL_SIZE])
+                shape.draw([col * op.RESOLUTION, 
+                            row * op.RESOLUTION],
+                            op.CELL_SIZE)
+            
+                if line_shape is None: return
 
-                # pygame.draw.circle(screen, 
-                #     (100, 150, 100),
-                #     [col * op.RESOLUTION, 
-                #     row * op.RESOLUTION],
-                #     op.CELL_SIZE//2)
-                
                 for i in nb.prange(-1, 2):
                     for j in nb.prange(-1, 2):
                         row_index = (row + i)
@@ -55,11 +46,9 @@ def draw_matrix(game_matrix, screen: pygame.Surface) -> None:
                             col_index >= len(game_matrix[0]) or \
                             game_matrix[row_index][col_index] == 0:
                             continue
-
-                        pygame.draw.line(screen, 
-                             get_random_color(), 
-                             [col * op.RESOLUTION, row * op.RESOLUTION], 
-                             [col_index * op.RESOLUTION, row_index * op.RESOLUTION], op.RESOLUTION//5)
+                        
+                        line_shape.draw([col * op.RESOLUTION, row * op.RESOLUTION],
+                                        [col_index * op.RESOLUTION, row_index * op.RESOLUTION])
 
 @nb.jit(fastmath=True, parallel=True)
 def count_cell_neighbors(game_matrix, row :int, col:int) -> int:
@@ -100,22 +89,25 @@ def get_next_generation(game_matrix, rows, cols):
 def set_game_matrix_cell_by_coords(x, y, game_matrix):
     if x < op.WIDTH and x >= 0 and y < op.HEIGHT and y >= 0: 
         j, i = x // op.RESOLUTION, y // op.RESOLUTION
-        print(i, j)
         game_matrix[i][j] = 1 
 
 @nb.njit(fastmath=True)
 def get_euclidean_distance(x1, y1, x2, y2):
     return int(math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2))
 
-@nb.jit(forceobj=True)
+#@nb.jit(forceobj=True)
 def main() -> None:
+    shape_type = CircleShape
+
     pygame.init()
-    
 
     pygame.display.set_caption("Game of life")
     screen = pygame.display.set_mode((op.WIDTH, op.HEIGHT))
 
-    game_matrix = init_matrix(False, op.V_RES, op.H_RES)
+    shape = shape_type(screen, get_random_color())
+    line_shape = LineShape(screen, get_random_color())
+
+    game_matrix = init_matrix(True, op.V_RES, op.H_RES)
 
     running = True
     pause = False
@@ -159,10 +151,11 @@ def main() -> None:
 
                         prev_x, prev_y = x, y
 
+
         # op.H_RES = op.WIDTH // op.RESOLUTION # Horizontal resolution
         # op.V_RES = op.HEIGHT // op.RESOLUTION # Vertical resolution
 
-        draw_matrix(game_matrix, screen)
+        draw_matrix(game_matrix, shape, line_shape)
         pygame.display.update()
         screen.fill(BLACK)
 
