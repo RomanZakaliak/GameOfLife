@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from pygame import Surface, draw
+import math
 
 from options import *
 
@@ -39,3 +40,30 @@ class LineShape(CellShape):
 
     def draw(self, start_position, end_position) -> None:
         draw.line(self.surface, self.color, start_position, end_position, CELL_SIZE//4)
+
+
+class PoligonShape():
+    def __init__(self, vertices_number) -> None:
+        self.vertices_number = vertices_number
+
+    def draw(self, surface, color, position, size):
+        x, y = position
+        points = []
+
+        for angle in range(0, 360, 360//self.vertices_number):
+            angle_radians = angle * math.pi / 180
+            p = (x + (size // 2) * math.cos(angle_radians), y + (size // 2) * math.sin(angle_radians))
+            points.append(p)
+        
+        draw.polygon(surface, color, points)
+
+class PoligonShapeAdapter(CellShape):
+    def __init__(self, surface: Surface, color: tuple, poligon_shape: PoligonShape) -> None:
+        super().__init__(surface, color)
+        self.poligon_shape = poligon_shape
+
+    def draw(self, position, size) -> None:
+        self.poligon_shape.draw(self.surface, self.color, position, size)
+
+
+        

@@ -7,8 +7,8 @@ TICK_RATE = 24
 RESOLUTION = 20
 
 # Depends on values above and does not change from ui
-H_RES = WIDTH // RESOLUTION # Horizontal resolution
-V_RES = HEIGHT // RESOLUTION # Vertical resolution
+H_RES = WIDTH // RESOLUTION + 1# Horizontal resolution
+V_RES = HEIGHT // RESOLUTION + 1# Vertical resolution
 
 CELL_SIZE_RATE = 0.5 # Percent of resolution the cell should occupy (should be in range 0 to 1)
 CELL_SIZE = int(RESOLUTION * CELL_SIZE_RATE)

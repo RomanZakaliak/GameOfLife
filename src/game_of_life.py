@@ -95,16 +95,15 @@ def set_game_matrix_cell_by_coords(x, y, game_matrix):
 def get_euclidean_distance(x1, y1, x2, y2):
     return int(math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2))
 
-#@nb.jit(forceobj=True)
+@nb.jit(forceobj=True)
 def main() -> None:
-    shape_type = CircleShape
-
     pygame.init()
 
     pygame.display.set_caption("Game of life")
     screen = pygame.display.set_mode((op.WIDTH, op.HEIGHT))
 
-    shape = shape_type(screen, get_random_color())
+    poligon_shape = PoligonShape(4)
+    shape = PoligonShapeAdapter(screen, get_random_color(), poligon_shape)
     line_shape = LineShape(screen, get_random_color())
 
     game_matrix = init_matrix(True, op.V_RES, op.H_RES)
