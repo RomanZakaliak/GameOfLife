@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+src/cell_shape.py
+src/event_handlers.py
+src/options.py
+src/gameoflife.egg-info/PKG-INFO
+src/gameoflife.egg-info/SOURCES.txt
+src/gameoflife.egg-info/dependency_links.txt
+src/gameoflife.egg-info/requires.txt
+src/gameoflife.egg-info/top_level.txt

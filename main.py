@@ -1,28 +1,31 @@
-import pygame
-import random
-import numpy as np
-import numba as nb
 import math
-
-from cell_shape import *
-
+import random
 import traceback
 
-import options as op
-from event_handlers import *
+import numba as nb
+import numpy as np
+import pygame
+
+from src import options as op
+from src.cell_shape import CellShape, LineShape, PoligonShape, PoligonShapeAdapter
+from src.event_handlers import on_game_pause
+from src.math import interpolate
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
+
 def get_random_color():
     return (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
+
 @nb.njit
-def init_matrix(fill_random :bool, rows, cols):
+def init_matrix(fill_random: bool, rows, cols):
     if fill_random:
         return np.random.randint(0, 2, size=(rows, cols))
-        
+
     return np.zeros((rows, cols), dtype=nb.int64)
+
 
 @nb.jit(forceobj=True, looplift=False, parallel=True)
 def draw_matrix(game_matrix, shape: CellShape, line_shape: LineShape) -> None:
@@ -31,27 +34,31 @@ def draw_matrix(game_matrix, shape: CellShape, line_shape: LineShape) -> None:
             if row >= len(game_matrix) or col >= len(game_matrix[0]):
                 continue
             if game_matrix[row][col] == 1:
-                shape.draw([col * op.RESOLUTION, 
-                            row * op.RESOLUTION],
-                            op.CELL_SIZE)
-            
-                if line_shape is None: return
+                shape.draw([col * op.RESOLUTION, row * op.RESOLUTION], op.CELL_SIZE)
+
+                if line_shape is None:
+                    return
 
                 for i in nb.prange(-1, 2):
                     for j in nb.prange(-1, 2):
-                        row_index = (row + i)
-                        col_index = (col + j)
+                        row_index = row + i
+                        col_index = col + j
 
-                        if row_index >= len(game_matrix) or \
-                            col_index >= len(game_matrix[0]) or \
-                            game_matrix[row_index][col_index] == 0:
+                        if (
+                            row_index >= len(game_matrix)
+                            or col_index >= len(game_matrix[0])
+                            or game_matrix[row_index][col_index] == 0
+                        ):
                             continue
-                        
-                        line_shape.draw([col * op.RESOLUTION, row * op.RESOLUTION],
-                                        [col_index * op.RESOLUTION, row_index * op.RESOLUTION])
+
+                        line_shape.draw(
+                            [col * op.RESOLUTION, row * op.RESOLUTION],
+                            [col_index * op.RESOLUTION, row_index * op.RESOLUTION],
+                        )
+
 
 @nb.jit(fastmath=True, parallel=True)
-def count_cell_neighbors(game_matrix, row :int, col:int) -> int:
+def count_cell_neighbors(game_matrix, row: int, col: int) -> int:
     sum = 0
     for i in nb.prange(-1, 2):
         for j in nb.prange(-1, 2):
@@ -64,6 +71,7 @@ def count_cell_neighbors(game_matrix, row :int, col:int) -> int:
             sum += game_matrix[row_index][col_index]
 
     return sum - game_matrix[row][col]
+
 
 @nb.njit(parallel=True)
 def get_next_generation(game_matrix, rows, cols):
@@ -83,17 +91,15 @@ def get_next_generation(game_matrix, rows, cols):
                 next_gen[row][col] = 0
             else:
                 next_gen[row][col] = game_matrix[row][col]
-    
+
     return next_gen
 
-def set_game_matrix_cell_by_coords(x, y, game_matrix):
-    if x < op.WIDTH and x >= 0 and y < op.HEIGHT and y >= 0: 
-        j, i = x // op.RESOLUTION, y // op.RESOLUTION
-        game_matrix[i][j] = 1 
 
-@nb.njit(fastmath=True)
-def get_euclidean_distance(x1, y1, x2, y2):
-    return int(math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2))
+def set_game_matrix_cell_by_coords(x, y, game_matrix):
+    if x < op.WIDTH and x >= 0 and y < op.HEIGHT and y >= 0:
+        j, i = x // op.RESOLUTION, y // op.RESOLUTION
+        game_matrix[i][j] = 1
+
 
 @nb.jit(forceobj=True)
 def main() -> None:
@@ -114,7 +120,6 @@ def main() -> None:
     lbm_pressed = False
 
     prev_x, prev_y = (0, 0)
-
     while running:
         events = pygame.event.get()
         for event in events:
@@ -128,8 +133,8 @@ def main() -> None:
                     if pygame.mouse.get_pressed()[0]:
                         x, y = pygame.mouse.get_pos()
                         prev_x, prev_y = x, y
-                        set_game_matrix_cell_by_coords(x, y, game_matrix)                
-                            
+                        set_game_matrix_cell_by_coords(x, y, game_matrix)
+
                     elif pygame.mouse.get_pressed()[2]:
                         pass
                 case pygame.MOUSEBUTTONUP:
@@ -137,29 +142,22 @@ def main() -> None:
                 case pygame.MOUSEMOTION:
                     if lbm_pressed:
                         x, y = pygame.mouse.get_pos()
+                        
+                        interploation = interpolate(x, y, prev_x, prev_y)
 
-                        angle = math.pi + math.atan2(prev_y - y, prev_x - x)
-                        angle_sin = math.sin(angle)
-                        angle_cos = math.cos(angle)
-
-                        distance = get_euclidean_distance(x, y, prev_x, prev_y)
-                        prev_x_l, prev_y_l = prev_x, prev_y
-                        for _ in range(0, distance // op.CELL_SIZE):
-                            set_game_matrix_cell_by_coords(int(prev_x_l), int(prev_y_l), game_matrix)
-                            prev_x_l, prev_y_l = prev_x_l + angle_cos * op.CELL_SIZE, prev_y_l + angle_sin * op.CELL_SIZE
+                        for prev_x_l, prev_y_l in interploation:
+                            set_game_matrix_cell_by_coords(
+                                int(prev_x_l), int(prev_y_l), game_matrix
+                            )
 
                         prev_x, prev_y = x, y
-
-
-        # op.H_RES = op.WIDTH // op.RESOLUTION # Horizontal resolution
-        # op.V_RES = op.HEIGHT // op.RESOLUTION # Vertical resolution
 
         draw_matrix(game_matrix, shape, line_shape)
         pygame.display.update()
         screen.fill(BLACK)
 
         if not pause:
-            clock.tick(op.TICK_RATE)
+            clock.tick(op.MAX_FPS)
             game_matrix = get_next_generation(game_matrix, op.V_RES, op.H_RES)
 
 

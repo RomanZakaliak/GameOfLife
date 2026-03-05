@@ -1,14 +1,17 @@
-#Should be initialized before start execution
-WIDTH = 1280 
+# Should be initialized before start execution
+WIDTH = 1280
 HEIGHT = 720
 
 # Could be changed duiring script execution using ui
-TICK_RATE = 24
+MAX_FPS = 60
+TICK_RATE = 10
 RESOLUTION = 20
 
 # Depends on values above and does not change from ui
-H_RES = WIDTH // RESOLUTION + 1# Horizontal resolution
-V_RES = HEIGHT // RESOLUTION + 1# Vertical resolution
+H_RES = WIDTH // RESOLUTION + 1  # Horizontal resolution
+V_RES = HEIGHT // RESOLUTION + 1  # Vertical resolution
 
-CELL_SIZE_RATE = 0.5 # Percent of resolution the cell should occupy (should be in range 0 to 1)
+CELL_SIZE_RATE = (
+    0.5  # Percent of resolution the cell should occupy (should be in range 0 to 1)
+)
 CELL_SIZE = int(RESOLUTION * CELL_SIZE_RATE)
