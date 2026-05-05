@@ -1,17 +1,15 @@
-# Should be initialized before start execution
-WIDTH = 1280
-HEIGHT = 720
+WIDTH = 1200
+HEIGHT = 800
 
-# Could be changed duiring script execution using ui
-MAX_FPS = 60
-TICK_RATE = 10
-RESOLUTION = 20
+TICK_RATE = 25
 
-# Depends on values above and does not change from ui
-H_RES = WIDTH // RESOLUTION + 1  # Horizontal resolution
-V_RES = HEIGHT // RESOLUTION + 1  # Vertical resolution
 
-CELL_SIZE_RATE = (
-    0.5  # Percent of resolution the cell should occupy (should be in range 0 to 1)
-)
-CELL_SIZE = int(RESOLUTION * CELL_SIZE_RATE)
+RESOLUTION = 10
+
+H_RES = WIDTH // RESOLUTION + 1
+V_RES = HEIGHT // RESOLUTION + 1
+
+CELL_SIZE_RATE = 1.0
+
+# The distance in pixels between two adjacent cells when drawing with the mouse.
+CELL_DELTA = int(RESOLUTION * CELL_SIZE_RATE)
